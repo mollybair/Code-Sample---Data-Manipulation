@@ -119,6 +119,19 @@ def get_array(soup):
     return np.array(array)
 
 def array_to_df(array, colnames, n):
+    """
+    Parameters
+    ----------
+    array : array to be converted to pandas df
+    colnames : dataframe column names
+    n : col number on which to split dataframe
+        the array was created from a table with repeating columns; it is essentially
+        two identical dataframes side by side; want them instead to be stacked vertically
+
+    Returns
+    -------
+    df_final : pandas dataframe
+    """
     df = pd.DataFrame(data = array, columns = colnames)
     df.drop([0], inplace = True)   # col names are also stored as first row
     df1 = df.iloc[:, 0:n]
@@ -126,12 +139,40 @@ def array_to_df(array, colnames, n):
     df_final = pd.concat([df1, df2])
     return df_final
 
+def join(df1, df2, id_col, new_col):
+    """
+    Parameters
+    ----------
+    df1 : first dataframe to join
+    df2 : second dataframe to join
+    id_col : col name, present in both dataframes, that identifies observations
+    new_col : col name of new col being added to df1 from df2
+    Returns
+    -------
+    df_merged : joined dataframe
+    """
+    df2.reset_index(inplace = True)
+    counter = 0
+    for state in df2[id_col]:
+        if state.upper() not in list(df1[id_col]):
+            df2 = df2.drop([counter])
+        counter += 1 
+    df1 = df1.sort_values(by = [id_col])
+    df2 = df2.sort_values(by = [id_col])
+    col = []
+    for i in df2[new_col]:
+        i = i.strip('()')
+        col.append(int(i))
+    df_merged = df1
+    df_merged[new_col] = col
+    return df_merged
+
 def main():
     ## load and manipulate data
-    df = csv_df('COVID Case Data.csv', 23)
-    df = reshape(df, ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
-                      'BLACK IR', 'HISPANIC IR', 'WHITE IR'], 'DATE')
-    df = format_date(df, 'DATE')
+    df_cases = csv_df('COVID Case Data.csv', 23)
+    # df_cases = reshape(df_cases, ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES',\
+    #                               'WHITE CASES','BLACK IR', 'HISPANIC IR', 'WHITE IR'], 'DATE')
+    # df_cases = format_date(df_cases, 'DATE')
     
     ## scrape and shape web data
     rank_soup = make_soup('https://www.multistate.us/issues/covid-19-state-reopening-guide',\
@@ -139,10 +180,17 @@ def main():
     check_soup(rank_soup, ['COVID-19 State Reopening Guide', 'Ratings', 'Methodology',\
                          'Molly'])     # should print yes, yes, yes, no
     rank_array = get_array(rank_soup)
-    colnames = ['Rank', 'State', 'Reopening Plan', 'Score', 'Rank', 'State',\
-                'Reopening Plan', 'Score']
+    colnames = ['RANK', 'STATE', 'Reopening Plan', 'SCORE', 'RANK', 'STATE',\
+                'Reopening Plan', 'SCORE']
     df_rank = array_to_df(rank_array, colnames, 4)
-    print(df_rank.head())
+    df_rank = df_rank.drop(columns = 'Reopening Plan')
+    
+    ## merge df_cases and df_rank
+    df = join(df_cases, df_rank, 'STATE', 'RANK')
+    df = reshape(df, ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
+                      'BLACK IR', 'HISPANIC IR', 'WHITE IR'], 'DATE')
+    df = format_date(df, 'DATE')
+    print(df.head())
 
     
     
