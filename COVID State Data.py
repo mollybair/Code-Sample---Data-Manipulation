@@ -11,6 +11,7 @@ import os
 from bs4 import BeautifulSoup
 import requests
 import numpy as np
+import matplotlib.pyplot as plt
 
 def csv_df(filename, nrows):
     """
@@ -38,10 +39,10 @@ def reshape(df, stubnames, j):
     -------
     df_reshaped : long pandas dataframe
     """
-    df['id'] = df.index
-    df_reshaped = pd.wide_to_long(df, stubnames = stubnames, i = 'id', j = j,\
-                                  sep = ' ').reset_index()
-    df_reshaped.drop(columns = ['id'], inplace = True)    # drop id column
+    # df['id'] = df.index
+    df_reshaped = pd.wide_to_long(df, stubnames = stubnames, i = ['STATE', 'RANK'], j = j,\
+                                  sep = ' ')
+    # df_reshaped.drop(columns = ['id'], inplace = True)    # drop id column
     return df_reshaped
 
 def format_date(df, col_name):
@@ -165,33 +166,58 @@ def join(df1, df2, id_col, new_col):
         col.append(int(i))
     df_merged = df1
     df_merged[new_col] = col
+    # df_merged.reset_index(inplace = True)
     return df_merged
+
+def multi_scatter(df, x, y_list, colors, labels, title, ylabel, save_as):
+    fig, ax = plt.subplots()
+    counter = 0
+    for y in y_list:
+        ax.plot(df[x], df[y], color = colors[counter],\
+                label = labels[counter], linewidth = 1)
+        counter += 1
+    plt.rcParams["font.family"] = "serif"
+    ax.set_title(title)
+    ax.title.set_weight('bold')
+    ax.title.set_size(14)
+    ax.title.set_position([.5, 1.05])
+    ax.set_ylabel(ylabel)
+    ylab = ax.yaxis.get_label()
+    ylab.set_size(10)
+    plt.xticks(rotation = 45)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_lw(1.5)
+    ax.spines['left'].set_lw(1.5)
+    plt.legend()
+    plt.tight_layout()
+    myfig = plt.gcf()
+    plt.show()
+    myfig.savefig(save_as, dpi = 1000)
 
 def main():
     ## load and manipulate data
     df_cases = csv_df('COVID Case Data.csv', 23)
-    # df_cases = reshape(df_cases, ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES',\
-    #                               'WHITE CASES','BLACK IR', 'HISPANIC IR', 'WHITE IR'], 'DATE')
-    # df_cases = format_date(df_cases, 'DATE')
     
     ## scrape and shape web data
     rank_soup = make_soup('https://www.multistate.us/issues/covid-19-state-reopening-guide',\
                            {'user-agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1.2 Safari/605.1.15'})
-    check_soup(rank_soup, ['COVID-19 State Reopening Guide', 'Ratings', 'Methodology',\
-                         'Molly'])     # should print yes, yes, yes, no
+    # check_soup(rank_soup, ['COVID-19 State Reopening Guide', 'Ratings', 'Methodology',\
+    #                      'Molly'])     # should print yes, yes, yes, no
     rank_array = get_array(rank_soup)
     colnames = ['RANK', 'STATE', 'Reopening Plan', 'SCORE', 'RANK', 'STATE',\
                 'Reopening Plan', 'SCORE']
     df_rank = array_to_df(rank_array, colnames, 4)
     df_rank = df_rank.drop(columns = 'Reopening Plan')
-    
+
     ## merge df_cases and df_rank
     df = join(df_cases, df_rank, 'STATE', 'RANK')
     df = reshape(df, ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
                       'BLACK IR', 'HISPANIC IR', 'WHITE IR'], 'DATE')
-    df = format_date(df, 'DATE')
-    print(df.head())
+    df.reset_index(inplace = True)
 
+
+    
     
     
     
