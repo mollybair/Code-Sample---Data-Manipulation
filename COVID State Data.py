@@ -5,75 +5,23 @@ Created on Fri Oct 23 11:34:00 2020
 
 @author: mollybair
 """
-
 import pandas as pd
-import os
+import datetime
 from bs4 import BeautifulSoup
 import requests
 import numpy as np
 import matplotlib.pyplot as plt
 
-def csv_df(filename, nrows):
-    """
-    Parameters
-    ----------
-    filename : name of csv file
-    nrows: number of rows to read from file
-
-    Returns
-    -------
-    df : pandas dataframe
-    """
-    df = pd.read_csv(filename, nrows = nrows)
-    return df
-
-def reshape(df, stubnames, j):
-    """
-    Parameters
-    ----------
-    df : pandas dataframe
-    stubnames : stubnames
-    j : identifying variable
-
-    Returns
-    -------
-    df_reshaped : long pandas dataframe
-    """
-    df_reshaped = pd.wide_to_long(df, stubnames = stubnames, i = ['STATE', 'RANK'], j = j,\
-                                  sep = ' ')
-    return df_reshaped
-
-def format_date(series):
-    """
-    Parameters
-    ----------
-    df : pandas pataframe
-    col_name : name of date col
-    Returns
-    -------
-    df : pandas dataframe
-        date col has been reformatted as MM/DD instead of MMDD
-    """
-    new_series = []
-    for i in series:
-        i = str(i)
-        new = i[0] + '/' + i[1:]
-        new_series.append(new)
-    return new_series
-
-def make_soup(url, headers):
+def make_soup(url):
     """
     Parameters
     ----------
     url : url of website to scrape
-    headers : TYPE
-        DESCRIPTION.
-        
     Returns
     -------
     soup : Beautiful Soup object
     """
-    response = requests.get(url, headers = headers)
+    response = requests.get(url)
     soup = BeautifulSoup(response.text, 'lxml')
     return soup
             
@@ -83,7 +31,6 @@ def get_array(soup):
     ----------
     soup : BeautifulSoup object
         soup object created from a website that has a table
-
     Returns
     -------
     array: numpy array
@@ -107,45 +54,81 @@ def array_to_df(array, colnames, n):
     n : col number on which to split dataframe
         the array was created from a table with repeating columns; it is essentially
         two identical dataframes side by side; want them instead to be stacked vertically
-
     Returns
     -------
     df_final : pandas dataframe
     """
-    df = pd.DataFrame(data = array, columns = colnames)
+    df = pd.DataFrame(data=array, columns=colnames)
     df.drop([0], inplace = True)   # col names are also stored as first row
     df1 = df.iloc[:, 0:n]
     df2 = df.iloc[:, n:]
     df_final = pd.concat([df1, df2])
     return df_final
 
-def join(df1, df2, id_col, new_col):
+def join_to_panel(df1, df2, id_col, new_col, stubnames, j):
     """
     Parameters
     ----------
-    df1 : first dataframe to join
-    df2 : second dataframe to join
+    df1 : main dataframe
+    df2 : secondary dataframe
     id_col : col name, present in both dataframes, that identifies observations
     new_col : col name of new col being added to df1 from df2
+    stubnames : stubnames
+    j : identifying variable for reshape
     Returns
     -------
-    df_merged : joined dataframe
+    df_panel : joined panel dataframe
     """
-    df2.reset_index(inplace = True)
-    counter = 0
-    for state in df2[id_col]:
-        if state.upper() not in list(df1[id_col]):
-            df2 = df2.drop([counter])
-        counter += 1 
-    df1 = df1.sort_values(by = [id_col])
-    df2 = df2.sort_values(by = [id_col])
-    col = []
-    for i in df2[new_col]:
-        i = i.strip('()')
-        col.append(int(i))
-    df_merged = df1
-    df_merged[new_col] = col
-    return df_merged
+    df2[id_col] = [obs.upper() for obs in list(df2[id_col])]
+    df2 = df2[df2[id_col].isin(list(df1[id_col]))]
+    df1 = df1.sort_values(by=[id_col])
+    df2 = df2.sort_values(by=[id_col])
+    df1[new_col] = list(df2[new_col].str.strip('()').astype(int))
+    df_panel = pd.wide_to_long(df1, stubnames=stubnames, i=[id_col, new_col], j=j,\
+                                  sep=' ').reset_index()
+    df_panel[j] = pd.to_datetime(df_panel[j], format='%y%m%d')
+    return df_panel
+
+def get_min_max(df, var, target_var):
+    """
+    Parameters
+    ----------
+    df : dataframe
+    var : series name
+        series to get min/max index of
+    target_var : series name
+        series observation to locate with min/max index
+    Returns
+    -------
+    max_val : max series obs
+    min_val : min series obs
+    """
+    max_val = df.at[df[var].idxmax(), target_var]
+    min_val = df.at[df[var].idxmin(), target_var]
+    return max_val, min_val
+
+def subset_df(df, s1, val1, s2, val2, val3):
+    """
+    Parameters
+    ----------
+    df : dataframe to subset
+    s1 : series
+        to be filtered on one condition
+    val1 : value of series
+        value to keep of s1
+    s2 : series
+        to be filtered on two conditions
+    val2 : value of series
+        value to keep of s2
+    val3 : value of series
+        value to keep of s2
+    Returns
+    -------
+    df : subsetted dataframe
+    """
+    df = df[(df[s1] == val1)]
+    df = df[(df[s2] == val2) | (df[s2] == val3)]
+    return df
 
 def grouped_bar(x, y1, y2, y3, lab1, lab2, lab3, xticks, title):
     """
@@ -166,9 +149,9 @@ def grouped_bar(x, y1, y2, y3, lab1, lab2, lab3, xticks, title):
     width = 0.2
     # create plot
     fig, ax = plt.subplots()
-    bar1 = ax.bar(ind - 0.2, y1, width, label = lab1, color = 'mediumseagreen')
-    bar2 = ax.bar(ind, y2, width, label = lab2, color = 'cornflowerblue')
-    bar2 = ax.bar(ind + 0.2, y3, width, label = lab3, color = 'goldenrod')
+    bar1 = ax.bar(ind - 0.2, y1, width, label=lab1, color='mediumseagreen')
+    bar2 = ax.bar(ind, y2, width, label=lab2, color='cornflowerblue')
+    bar2 = ax.bar(ind + 0.2, y3, width, label=lab3, color='goldenrod')
     # set x ticks
     ax.set_xticks(ind)
     ax.set_xticklabels(xticks)
@@ -189,30 +172,19 @@ def grouped_bar(x, y1, y2, y3, lab1, lab2, lab3, xticks, title):
     plt.show()
 
 def main():
-    ## load data
-    df_cases = csv_df('COVID Case Data.csv', 23)
-    ## scrape and shape web data
-    rank_soup = make_soup('https://www.multistate.us/issues/covid-19-state-reopening-guide',\
-                           {'user-agent' : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1.2 Safari/605.1.15'})
+    df_cases = pd.read_csv('COVID Case Data.csv', nrows=23)
+    rank_soup = make_soup('https://www.multistate.us/issues/covid-19-state-reopening-guide')
     rank_array = get_array(rank_soup)
     colnames = ['RANK', 'STATE', 'Reopening Plan', 'SCORE', 'RANK', 'STATE',\
                 'Reopening Plan', 'SCORE']
     df_rank = array_to_df(rank_array, colnames, 4)
-    df_rank = df_rank.drop(columns = 'Reopening Plan')
-    ## merge df_cases and df_rank
-    df = join(df_cases, df_rank, 'STATE', 'RANK')
-    df = reshape(df, ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
-                      'BLACK CI', 'HISPANIC CI', 'WHITE CI'], 'DATE')
-    df.reset_index(inplace = True)
-    df['DATE'] = format_date(df['DATE'])
-    ## create visualization to show relationship between cumulative incidence and reopening
-    ## rank, for 2 most open states and 2 most closed states for most recent wave of data
-    open_state = df.at[df['RANK'].idxmin(), 'STATE']
-    closed_state = df.at[df['RANK'].idxmax(), 'STATE']
-    df_recent = df[(df['DATE'] == '9/22')]
-    df_recent = df_recent[(df_recent['STATE'] == open_state) | (df_recent['STATE'] == closed_state)]
+    df = join_to_panel(df_cases, df_rank, 'STATE', 'RANK',\
+                       ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
+                        'BLACK CI', 'HISPANIC CI', 'WHITE CI'], 'DATE')
+    closed_state, open_state = get_min_max(df, 'RANK', 'STATE')
+    df_recent = subset_df(df, 'DATE', '2020-09-22', 'STATE', open_state, closed_state)
     grouped_bar([closed_state, open_state], df_recent['WHITE CI'], df_recent['BLACK CI'],\
                 df_recent['HISPANIC CI'], 'White', 'Black', 'Hispanic',\
-                    [closed_state, open_state],'Cumulative Incidence by Race')   
+                    [closed_state, open_state], 'Cumulative Incidence by Race')   
 main()
         
