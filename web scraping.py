@@ -71,11 +71,21 @@ def scrape_to_df(url, n):
     df = array_to_df(array, col_names, n)
     return df
 
+def add_date(df, last_update):
+    dates = [last_update]*len(df)
+    df['updated_on'] = dates
+    return df
+
 def main():
     # Retrieve COVID-19 reopening data from webpage
     rank_url = 'https://www.multistate.us/issues/covid-19-state-reopening-guide'
     rank_df = scrape_to_df(rank_url, 3)
     
+    # Add date of last update at time of scrape
+    last_update = '3/4/21'
+    rank_df = add_date(rank_df, last_update)
+    
+    # Save to repository
     path = Path.cwd()
     f_save = path.joinpath('COVID Reopening Ranks.csv')
     rank_df.to_csv(f_save)
