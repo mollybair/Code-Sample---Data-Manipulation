@@ -24,69 +24,15 @@ def format_state(full_df, abbrev_df, state_var):
     abbrev_df[state_var] = abbrev_df[state_var].map(state_dict)
     return abbrev_df
 
-def join(df1, df2, date, match):
-    df1 = df1[df1['date'] == date]
+def join(df1, df2, match):
     merged = df1.merge(df2, how='inner', on=match)
     return merged
 
-def get_min_max(df, var, target_var):
-    """
-    Parameters
-    ----------
-    df : dataframe
-    var : series name
-        series to get min/max index of
-    target_var : series name
-        series observation to locate with min/max index
-    Returns
-    -------
-    max_val : max series obs
-    min_val : min series obs
-    """
-    max_val = df.at[df[var].idxmax(), target_var]
-    min_val = df.at[df[var].idxmin(), target_var]
-    return max_val, min_val
-
-def grouped_bar(x, y1, y2, y3, lab1, lab2, lab3, xticks, title):
-    """
-    Parameters
-    ----------
-    x : x variable
-        variable bars are grouped by
-    y1 : first bar in grouping
-    y2 : second bar in grouping
-    y3 : third bar in grouping
-    lab1 : first bar label
-    lab2 : second bar label
-    lab3 : third bar label
-    xticks : labels for xticks (bar groupings)
-    title : plot title
-    """
-    ind = np.arange(len(x))  # x location for bar groups
-    width = 0.2
-    # create plot
-    fig, ax = plt.subplots()
-    bar1 = ax.bar(ind - 0.2, y1, width, label=lab1, color='mediumseagreen')
-    bar2 = ax.bar(ind, y2, width, label=lab2, color='cornflowerblue')
-    bar2 = ax.bar(ind + 0.2, y3, width, label=lab3, color='goldenrod')
-    # set x ticks
-    ax.set_xticks(ind)
-    ax.set_xticklabels(xticks)
-    # add title
-    ax.set_title(title)
-    ax.title.set_weight('bold')
-    ax.title.set_size(16)
-    ax.title.set_position([.5, 1])
-    # set spines
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.spines['bottom'].set_lw(1.5)
-    ax.spines['left'].set_lw(1.5)
-    # misc formatting and display
-    plt.legend()    
-    plt.rcParams["font.family"] = "serif"
-    plt.tight_layout()
-    plt.show()
+def raw_to_rate(df, raw_vars, scale_by, rate_names):
+    for i in range(len(raw_vars)):
+        rates = round((df[raw_vars[i]]/df[scale_by])*100, 2)
+        df[rate_names[i]] = rates
+    return df
 
 def main():
     path = Path.cwd()
@@ -98,27 +44,33 @@ def main():
 
     # Retrieve web scraped df
     rank_fname = 'COVID Reopening Ranks.csv'
-    rank = csv_to_df(path, rank_fname, ['Rank', 'State', 'Score'])
-    rank.columns = ['rank', 'state', 'score']
+    rank = csv_to_df(path, rank_fname, ['Rank', 'State', 'Score', 'updated_on'])
+    rank.columns = ['rank', 'state', 'score', 'date']
     
     # Format state columns (both should be full state name)
     cases = format_state(rank, cases, 'state')
     
-    print(cases.head())
-    print(rank.head())
-    
     # Join cases and ranks
-    df = join(cases, rank, '3/4/21', 'state')
+    cases = cases[cases['date'] == '3/4/21']
+    df = join(cases, rank, ['state', 'date'])
+
+    # Add column for state population, so that cases per capita can be compared
+    # across states
+    state_pop = csv_to_df(path, 'State Population.csv', ['State', 'Pop'])
+    state_pop.columns = ['state', 'population']
+    df = join(df, state_pop, 'state')
+    
+    # Scale cases by population
+    raw_case_counts = ['positive', 'positiveIncrease']
+    pc_names = ['total_cases_pc', 'new_cases_pc']
+    df = raw_to_rate(df, raw_case_counts, 'population', pc_names)
+    
     print(df.head())
-    
-    
-    # df = join_to_panel(df_cases, df_rank, 'STATE', 'RANK',\
-    #                    ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
-    #                     'BLACK CI', 'HISPANIC CI', 'WHITE CI'], 'DATE')
-    # closed_state, open_state = get_min_max(df, 'RANK', 'STATE')
-    # df_recent = subset_df(df, 'DATE', '2020-09-22', 'STATE', open_state, closed_state)
-    # grouped_bar([closed_state, open_state], df_recent['WHITE CI'], df_recent['BLACK CI'],\
-    #             df_recent['HISPANIC CI'], 'White', 'Black', 'Hispanic',\
-    #                 [closed_state, open_state], 'Cumulative Incidence by Race')   
+
+
+
+
+
+      
 main()
         
