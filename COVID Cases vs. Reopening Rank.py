@@ -7,6 +7,7 @@ Created on Fri Oct 23 11:34:00 2020
 """
 from pathlib import Path
 import pandas as pd
+import us
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,29 +16,18 @@ def csv_to_df(path, fname, cols):
     df = pd.read_csv(file, usecols=cols)
     return df
 
-def join_to_panel(df1, df2, id_col, new_col, stubnames, j):
-    """
-    Parameters
-    ----------
-    df1 : main dataframe
-    df2 : secondary dataframe
-    id_col : col name, present in both dataframes, that identifies observations
-    new_col : col name of new col being added to df1 from df2
-    stubnames : stubnames
-    j : identifying variable for reshape
-    Returns
-    -------
-    df_panel : joined panel dataframe
-    """
-    df2[id_col] = [obs.upper() for obs in list(df2[id_col])]
-    df2 = df2[df2[id_col].isin(list(df1[id_col]))]
-    df1 = df1.sort_values(by=[id_col])
-    df2 = df2.sort_values(by=[id_col])
-    df1[new_col] = list(df2[new_col].str.strip('()').astype(int))
-    df_panel = pd.wide_to_long(df1, stubnames=stubnames, i=[id_col, new_col], j=j,\
-                                  sep=' ').reset_index()
-    df_panel[j] = pd.to_datetime(df_panel[j], format='%y%m%d')
-    return df_panel
+def format_state(full_df, abbrev_df, state_var):
+    state_dict = {}
+    for state_name in full_df[state_var]:
+        state_abbrev = us.states.lookup(state_name).abbr
+        state_dict.update({state_abbrev:state_name})
+    abbrev_df[state_var] = abbrev_df[state_var].map(state_dict)
+    return abbrev_df
+
+def join(df1, df2, date, match):
+    df1 = df1[df1['date'] == date]
+    merged = df1.merge(df2, how='inner', on=match)
+    return merged
 
 def get_min_max(df, var, target_var):
     """
@@ -56,29 +46,6 @@ def get_min_max(df, var, target_var):
     max_val = df.at[df[var].idxmax(), target_var]
     min_val = df.at[df[var].idxmin(), target_var]
     return max_val, min_val
-
-def subset_df(df, s1, val1, s2, val2, val3):
-    """
-    Parameters
-    ----------
-    df : dataframe to subset
-    s1 : series
-        to be filtered on one condition
-    val1 : value of series
-        value to keep of s1
-    s2 : series
-        to be filtered on two conditions
-    val2 : value of series
-        value to keep of s2
-    val3 : value of series
-        value to keep of s2
-    Returns
-    -------
-    df : subsetted dataframe
-    """
-    df = df[(df[s1] == val1)]
-    df = df[(df[s2] == val2) | (df[s2] == val3)]
-    return df
 
 def grouped_bar(x, y1, y2, y3, lab1, lab2, lab3, xticks, title):
     """
@@ -132,11 +99,17 @@ def main():
     # Retrieve web scraped df
     rank_fname = 'COVID Reopening Ranks.csv'
     rank = csv_to_df(path, rank_fname, ['Rank', 'State', 'Score'])
+    rank.columns = ['rank', 'state', 'score']
+    
+    # Format state columns (both should be full state name)
+    cases = format_state(rank, cases, 'state')
     
     print(cases.head())
     print(rank.head())
     
-    # Join case and ranks
+    # Join cases and ranks
+    df = join(cases, rank, '3/4/21', 'state')
+    print(df.head())
     
     
     # df = join_to_panel(df_cases, df_rank, 'STATE', 'RANK',\
