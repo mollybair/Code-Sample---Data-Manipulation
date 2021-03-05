@@ -10,7 +10,11 @@ import pandas as pd
 import us
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+np.random.seed(100)
 
 def csv_to_df(path, fname, cols):
     file = path.joinpath(fname)
@@ -45,10 +49,23 @@ def scatter(x, y, title):
     ax.spines['left'].set_lw(1.5)
     plt.rcParams['font.family'] = 'sans-serif'
 
+def add_dummies(df, var):
+    dummies = pd.get_dummies(df[var])
+    df_with_dummies = pd.concat([df, dummies], axis=1)
+    return df_with_dummies
+
 def ols(x, y):
-    model = LinearRegression().fit(x, y)
-    print(model.score(x, y))
-    return
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,\
+                                                        random_state=30)
+    model = LinearRegression().fit(x_train, y_train)
+    
+    train_rsq = model.score(x_train, y_train)
+    test_rsq = model.score(x_test, y_test)
+    
+    y_pred = model.predict(x_test)
+    mse = mean_squared_error(y_test, y_pred)
+    
+    return [train_rsq, test_rsq, mse]
 
 def main():
     path = Path.cwd()
@@ -80,9 +97,7 @@ def main():
     raw_case_counts = ['positive', 'positiveIncrease']
     pc_names = ['total_cases_pc', 'new_cases_pc']
     df = raw_to_rate(df, raw_case_counts, 'population', pc_names)
-    
-    print(df.head())
-    
+
     # Check for evidence of correlation
     scatter(df['score'], df['new_cases_pc'],\
             'Reopening Score (x) vs. New Cases per Capita (y)')
@@ -90,15 +105,13 @@ def main():
     scatter(df['score'], df['total_cases_pc'],\
             'Reopening Score (x) vs. Total Cases per Capita (y)')
         
-    # Perform fixed effects regression
+    # Perform state fixed effects regression
+    df = add_dummies(df, 'state')
+    x = df.drop(columns=['date', 'state', 'positive', 'positiveIncrease',\
+                         'population', 'total_cases_pc', 'new_cases_pc', 'rank'])
+    y = df['total_cases_pc']
+    results = ols(x, y)
+    print(results)
 
-    
-    #ols(np.array(df['score']).reshape(-1, 1), df['total_cases_pc'])
-
-
-
-
-
-      
 main()
         

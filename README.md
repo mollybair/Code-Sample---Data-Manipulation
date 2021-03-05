@@ -1,5 +1,8 @@
 # Python Code Sample - Data Manipulation
 
+RQ: Can the degree of a state's openness predict that states total number of 
+COVID-19 cases per capita?
+
 This code sample creates and joins two pandas dataframes--one from a csv file
 and another from scraping a website. The first dataframe, df_cases, has data on 
 COVID-19 cases for a number of states. For each state, the following counts are 
