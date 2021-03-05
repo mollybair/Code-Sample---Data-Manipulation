@@ -8,8 +8,9 @@ Created on Fri Oct 23 11:34:00 2020
 from pathlib import Path
 import pandas as pd
 import us
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 def csv_to_df(path, fname, cols):
     file = path.joinpath(fname)
@@ -33,6 +34,21 @@ def raw_to_rate(df, raw_vars, scale_by, rate_names):
         rates = round((df[raw_vars[i]]/df[scale_by])*100, 2)
         df[rate_names[i]] = rates
     return df
+
+def scatter(x, y, title):
+    fig, ax = plt.subplots()
+    ax.scatter(x, y)
+    ax.set_title(title)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_lw(1.5)
+    ax.spines['left'].set_lw(1.5)
+    plt.rcParams['font.family'] = 'sans-serif'
+
+def ols(x, y):
+    model = LinearRegression().fit(x, y)
+    print(model.score(x, y))
+    return
 
 def main():
     path = Path.cwd()
@@ -66,6 +82,18 @@ def main():
     df = raw_to_rate(df, raw_case_counts, 'population', pc_names)
     
     print(df.head())
+    
+    # Check for evidence of correlation
+    scatter(df['score'], df['new_cases_pc'],\
+            'Reopening Score (x) vs. New Cases per Capita (y)')
+    
+    scatter(df['score'], df['total_cases_pc'],\
+            'Reopening Score (x) vs. Total Cases per Capita (y)')
+        
+    # Perform fixed effects regression
+
+    
+    #ols(np.array(df['score']).reshape(-1, 1), df['total_cases_pc'])
 
 
 

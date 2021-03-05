@@ -20,3 +20,7 @@ the spread of COVID-19.
 A limitation of this analysis is that the state reopening ranks were last updated
 on October 30, 2020 whereas the most recent wave of case data is from September
 22, 2020. 
+
+COVID-19 case data retrieved from:
+COVID-19 reopening data retrieved from: https://www.multistate.us/issues/covid-19-state-reopening-guide
+Population data retrieved from: https://worldpopulationreview.com/states
