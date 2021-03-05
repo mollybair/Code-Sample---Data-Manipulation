@@ -5,65 +5,17 @@ Created on Fri Oct 23 11:34:00 2020
 
 @author: mollybair
 """
+from pathlib import Path
 import pandas as pd
-import datetime
 from bs4 import BeautifulSoup
 import requests
 import numpy as np
 import matplotlib.pyplot as plt
 
-def make_soup(url):
-    """
-    Parameters
-    ----------
-    url : url of website to scrape
-    Returns
-    -------
-    soup : Beautiful Soup object
-    """
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'lxml')
-    return soup
-            
-def get_array(soup):
-    """
-    Parameters
-    ----------
-    soup : BeautifulSoup object
-        soup object created from a website that has a table
-    Returns
-    -------
-    array: numpy array
-        returns data in website table in array format
-    """
-    table = soup.find('table')
-    array = []
-    for row in table.find_all('tr'):
-        temp = []
-        for cell in row.find_all(['th', 'td']):
-            temp.append(cell.text)
-        array.append(temp)
-    return np.array(array)
-
-def array_to_df(array, colnames, n):
-    """
-    Parameters
-    ----------
-    array : array to be converted to pandas df
-    colnames : dataframe column names
-    n : col number on which to split dataframe
-        the array was created from a table with repeating columns; it is essentially
-        two identical dataframes side by side; want them instead to be stacked vertically
-    Returns
-    -------
-    df_final : pandas dataframe
-    """
-    df = pd.DataFrame(data=array, columns=colnames)
-    df.drop([0], inplace = True)   # col names are also stored as first row
-    df1 = df.iloc[:, 0:n]
-    df2 = df.iloc[:, n:]
-    df_final = pd.concat([df1, df2])
-    return df_final
+def csv_to_df(path, fname, cols):
+    file = path.joinpath(fname)
+    df = pd.read_csv(file, usecols=cols)
+    return df
 
 def join_to_panel(df1, df2, id_col, new_col, stubnames, j):
     """
@@ -172,19 +124,22 @@ def grouped_bar(x, y1, y2, y3, lab1, lab2, lab3, xticks, title):
     plt.show()
 
 def main():
-    df_cases = pd.read_csv('COVID Case Data.csv', nrows=23)
-    rank_soup = make_soup('https://www.multistate.us/issues/covid-19-state-reopening-guide')
-    rank_array = get_array(rank_soup)
-    colnames = ['RANK', 'STATE', 'Reopening Plan', 'SCORE', 'RANK', 'STATE',\
-                'Reopening Plan', 'SCORE']
-    df_rank = array_to_df(rank_array, colnames, 4)
-    df = join_to_panel(df_cases, df_rank, 'STATE', 'RANK',\
-                       ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
-                        'BLACK CI', 'HISPANIC CI', 'WHITE CI'], 'DATE')
-    closed_state, open_state = get_min_max(df, 'RANK', 'STATE')
-    df_recent = subset_df(df, 'DATE', '2020-09-22', 'STATE', open_state, closed_state)
-    grouped_bar([closed_state, open_state], df_recent['WHITE CI'], df_recent['BLACK CI'],\
-                df_recent['HISPANIC CI'], 'White', 'Black', 'Hispanic',\
-                    [closed_state, open_state], 'Cumulative Incidence by Race')   
+    path = Path.cwd()
+    
+    # Retrieve COVID-19 case data from csv
+    cases_fname = 'COVID Tracker Project-By State.csv'
+    covid_cols = ['date', 'state', 'positive', 'positiveIncrease']
+    cases = csv_to_df(path, cases_fname, covid_cols)
+    #print(cases.head())
+    
+    
+    # df = join_to_panel(df_cases, df_rank, 'STATE', 'RANK',\
+    #                    ['TOTAL CASES', 'BLACK CASES', 'HISPANIC CASES', 'WHITE CASES',\
+    #                     'BLACK CI', 'HISPANIC CI', 'WHITE CI'], 'DATE')
+    # closed_state, open_state = get_min_max(df, 'RANK', 'STATE')
+    # df_recent = subset_df(df, 'DATE', '2020-09-22', 'STATE', open_state, closed_state)
+    # grouped_bar([closed_state, open_state], df_recent['WHITE CI'], df_recent['BLACK CI'],\
+    #             df_recent['HISPANIC CI'], 'White', 'Black', 'Hispanic',\
+    #                 [closed_state, open_state], 'Cumulative Incidence by Race')   
 main()
         
