@@ -3,27 +3,23 @@
 RQ: Can the degree of a state's openness predict that states total number of 
 COVID-19 cases per capita?
 
-This code sample creates and joins two pandas dataframes--one from a csv file
-and another from scraping a website. The first dataframe, df_cases, has data on 
-COVID-19 cases for a number of states. For each state, the following counts are 
-recorded on each collection date: total cases, white cases, Black cases, 
-Hispanic cases, white cumulative incidence, Black cumulative incidence, and 
-Hispanic cumulative incidence. The second dataframe, df_rank, contains each 
-state's rank based on their COVID-19 reopening plan. While perhaps counterintuitive, 
-a lower rank means the state is more open. 
+This code sample uses COVID-19 case data from The COVID Tracker Project,
+COVID-19 reopening data from MultiState, and population data from the World
+Population Review. There are three csv files in this repository.
+Notably, COVID Reopening Ranks.csv was generated from the web scraping.py
+file in this repository. Currently, that csv file contains data that was last
+updated on March 4, 2021. Accordingly, the COVID-19 case data, downloaded from
+the url pasted below, also contains data that was last updated on March 4, 2021.
+Note that running the web scraping.py file without commenting out the line that
+writes the dataframe to a csv file will overwrite the current data, and thus 
+the case data and rank data will have been collected on different dates. 
 
-The resulting panel dataframe is used to create a visualization that compares the
-cumulative incidences for each racial group in the most open state (Florida) and in
-the most closed state (California). In both states, the white cumulative incidence
-is lowest and the Hispanic cumulative incidence is highest. However, all three
-racial groups experience much higher cumulative incidences in Florida than they
-do in California. This indicates ithat a stricter reopening policy likely inhibits
-the spread of COVID-19. 
+After cleaning and merging all three dataframes, I created scatter plots to
+look for evidence of correlation. If a scatter plot indicates correlation, the
+variables used to create the plot were inputted into a regression model. The goal
+is to try to predict a state's COVID-19 cases per capita (either new or total)
+using data on the state's reopening plan.
 
-A limitation of this analysis is that the state reopening ranks were last updated
-on October 30, 2020 whereas the most recent wave of case data is from September
-22, 2020. 
-
-COVID-19 case data retrieved from:
+COVID-19 case data retrieved from: https://covidtracking.com/data/
 COVID-19 reopening data retrieved from: https://www.multistate.us/issues/covid-19-state-reopening-guide
 Population data retrieved from: https://worldpopulationreview.com/states
