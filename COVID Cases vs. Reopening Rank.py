@@ -10,8 +10,9 @@ import pandas as pd
 import us
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 np.random.seed(100)
@@ -54,6 +55,55 @@ def add_dummies(df, var):
     df_with_dummies = pd.concat([df, dummies], axis=1)
     return df_with_dummies
 
+def strip_strings(df, var, strip_chars):
+    formatted = []
+    for value in df[var]:
+        temp = value.strip(strip_chars)
+        formatted.append(temp)
+    df[var] = formatted
+    return df
+
+def backward_selection_helper(remaining_predictors, y):
+    this_best_score = -1000
+    this_best_pred = None
+    remove_p = None
+    for p in remaining_predictors:
+        try_predictors = remaining_predictors.drop(columns=[p])
+        this_score = np.mean(cross_val_score(LinearRegression(), try_predictors,\
+                                             y, scoring='explained_variance'))
+            
+        if this_score > this_best_score:
+            this_best_score = this_score
+            this_best_pred = list(try_predictors.columns)
+            remove_p = p
+
+    return this_best_score, this_best_pred, remove_p
+
+def backward_selection(all_predictors, y):
+    # start with assumption that full model is best model
+    best_score = np.mean(cross_val_score(LinearRegression(), all_predictors, y,\
+                         scoring='explained_variance'))
+    best_predictors = list(all_predictors.columns)
+    
+    removed = []
+    
+    for i in range(len(all_predictors)): # max possible iterations
+        if len(removed) > 0:
+            remaining_predictors = all_predictors.drop(columns=removed)
+        else:
+            remaining_predictors = all_predictors
+        
+        new_score, new_predictors, remove_p = backward_selection_helper(
+            remaining_predictors, y)
+        if new_score > best_score:
+            best_score = new_score
+            best_predictors = new_predictors
+            removed.append(remove_p)
+        else:
+            break
+    
+    return best_score, best_predictors           
+
 def ols(x, y):
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,\
                                                         random_state=30)
@@ -61,7 +111,6 @@ def ols(x, y):
     
     train_rsq = model.score(x_train, y_train)
     test_rsq = model.score(x_test, y_test)
-    
     y_pred = model.predict(x_test)
     mse = mean_squared_error(y_test, y_pred)
     
@@ -105,13 +154,20 @@ def main():
     scatter(df['score'], df['total_cases_pc'],\
             'Reopening Score (x) vs. Total Cases per Capita (y)')
         
-    # Perform state fixed effects regression
+    # Convert rank to int so it can be used in the regression model
+    df = strip_strings(df, 'rank', '()')
+    
+    # Add state dummies to consider adding state fixed effects to model
     df = add_dummies(df, 'state')
-    x = df.drop(columns=['date', 'state', 'positive', 'positiveIncrease',\
-                         'population', 'total_cases_pc', 'new_cases_pc', 'rank'])
-    y = df['total_cases_pc']
-    results = ols(x, y)
-    print(results)
-
+        
+    # Perform backward selection to choose features to predict total cases per capita
+    numeric_x = df.drop(columns=['date', 'state', 'total_cases_pc', 'new_cases_pc'])
+    y_total = df['total_cases_pc']
+    score_total, features_total = backward_selection(numeric_x, y_total)
+    
+    # Perform backward selection to choose features to predict new cases per capita
+    y_new = df['new_cases_pc']    
+    score_new, features_new = backward_selection(numeric_x, y_new)
+    
 main()
         

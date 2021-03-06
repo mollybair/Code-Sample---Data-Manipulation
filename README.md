@@ -20,6 +20,12 @@ variables used to create the plot were inputted into a regression model. The goa
 is to try to predict a state's COVID-19 cases per capita (either new or total)
 using data on the state's reopening plan.
 
+A scatter plot of reopening score on the x-axis and total cases per capita on
+the y-axis shows a possibly linear correlation. So, I inputted these variables
+in a linear regression model, and used the mean squared error and the R-squared
+value to evaluate the model's performance. I decided against adding state fixed
+effects to the model because doing so increased the mean squared error.
+
 COVID-19 case data retrieved from: https://covidtracking.com/data/
 COVID-19 reopening data retrieved from: https://www.multistate.us/issues/covid-19-state-reopening-guide
 Population data retrieved from: https://worldpopulationreview.com/states
