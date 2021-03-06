@@ -161,13 +161,24 @@ def main():
     df_state_fe = add_dummies(df, 'state')
         
     # Perform backward selection to choose features to predict total cases per capita
-    numeric_x = df.drop(columns=['date', 'state', 'total_cases_pc', 'new_cases_pc'])
+    numeric_x_tot = df.drop(columns=['date', 'state', 'total_cases_pc', 'new_cases_pc',\
+                                 'positive', 'positiveIncrease', 'population'])
     y_total = df['total_cases_pc']
-    score_total, features_total = backward_selection(numeric_x, y_total)
+    score_total, features_total = backward_selection(numeric_x_tot, y_total)
     
     # Perform backward selection to choose features to predict new cases per capita
+    # without state fixed effects
+    numeric_x_new = df.drop(columns=['date', 'state', 'total_cases_pc', 'new_cases_pc',\
+                                  'positive', 'positiveIncrease', 'population'])
     y_new = df['new_cases_pc']    
-    score_new, features_new = backward_selection(numeric_x, y_new)
+    score_new, features_new = backward_selection(numeric_x_new, y_new)
+    
+    # # Perform backward selection to choose features to predict new cases per capita
+    # # with state fixed effects
+    numeric_x_fe = df_state_fe.drop(columns=['date', 'state', 'total_cases_pc', 'new_cases_pc',\
+                                  'positive', 'positiveIncrease', 'population'])
+    y_fe = df_state_fe['new_cases_pc']
+    score_new_fe, features_new_fe = backward_selection(numeric_x_fe, y_fe)
     
     # Perform OLS with selected features
     total_pc_results = ols(df[features_total], y_total)
@@ -182,7 +193,13 @@ def main():
           and obtain the following results:')
     print('Features: ', features_new)
     print('Results: ', new_pc_results)
-
+    print('\n')
+    
+    new_pc_results_fe = ols(df_state_fe[features_new_fe], y_fe)
+    print('To predict new COVID-19 cases per capita including state fixed effects,\
+          we use the following predictors and obtain the following results:')
+    print('Features: ', features_new_fe)
+    print('Results: ', new_pc_results_fe)
     
 main()
         

@@ -15,21 +15,27 @@ writes the dataframe to a csv file will overwrite the current data, and thus
 the case data and rank data will have been collected on different dates. 
 
 After cleaning and merging all three dataframes, I created scatter plots to
-look for evidence of correlation. If a scatter plot indicates correlation, the
-variables used to create the plot were inputted into a regression model. The goal
-is to try to predict a state's COVID-19 cases per capita (either new or total)
-using data on the state's reopening plan.
+look for evidence of correlation. These plots led me to decide to use the data
+to fit a linear regression model, with the goal of predicting a state's COVID-19
+total cases per capita and new daily cases per capita.
 
-A scatter plot of reopening score on the x-axis and total cases per capita on
-the y-axis shows a possibly linear correlation. So, I inputted these variables
-in a linear regression model, and used the mean squared error and the R-squared
-value to evaluate the model's performance. I decided against adding state fixed
-effects to the model because doing so increased the mean squared error.
+To select features, I used the backward selection method. While there are only
+two features to select from (rank and score), I decided to implement backward
+selection so that my code can be more easily scaled up, and so that I could 
+test the effects of including state fixed effects in my models.
 
-I decided not to include state fixed effects in either of the final models. 
-Including state fixed effects resulted in the same mean squared error as not
-including them did, and the result is an equally performing, simpler model
-without them.
+Total COVID-19 cases per capita is best predicted without including state fixed
+effects. The mean squared error is slightly smaller without state fixed effects,
+and the model is simpler. The mean squared error is 7.7913, and the model explains
+12.01% of the variation in the test data. So, this model is helpful but could be
+improved with the inclusion of more features.
+
+With and without the inclusion of state fixed effects, the OLS model that uses
+new cases per capita as its dependent variable results in a negative test R-squared
+value. This means that the model created using the training data is bad. 
+This is in accordance with the very small mean squared error in these two models, 
+which may indicate underfitting. So, we do not have enough features to predict 
+new COVID-19 cases per capita. 
 
 COVID-19 case data retrieved from: https://covidtracking.com/data/
 COVID-19 reopening data retrieved from: https://www.multistate.us/issues/covid-19-state-reopening-guide
