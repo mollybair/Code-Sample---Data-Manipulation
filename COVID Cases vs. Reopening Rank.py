@@ -64,13 +64,13 @@ def strip_strings(df, var, strip_chars):
     return df
 
 def backward_selection_helper(remaining_predictors, y):
-    this_best_score = -1000
+    this_best_score = 1000
     this_best_pred = None
     remove_p = None
     for p in remaining_predictors:
         try_predictors = remaining_predictors.drop(columns=[p])
         this_score = np.mean(cross_val_score(LinearRegression(), try_predictors,\
-                                             y, scoring='explained_variance'))
+                                             y, scoring='neg_mean_squared_error'))*-1
             
         if this_score > this_best_score:
             this_best_score = this_score
@@ -82,7 +82,7 @@ def backward_selection_helper(remaining_predictors, y):
 def backward_selection(all_predictors, y):
     # start with assumption that full model is best model
     best_score = np.mean(cross_val_score(LinearRegression(), all_predictors, y,\
-                         scoring='explained_variance'))
+                         scoring='neg_mean_squared_error'))*-1
     best_predictors = list(all_predictors.columns)
     
     removed = []
@@ -95,7 +95,7 @@ def backward_selection(all_predictors, y):
         
         new_score, new_predictors, remove_p = backward_selection_helper(
             remaining_predictors, y)
-        if new_score > best_score:
+        if new_score < best_score:
             best_score = new_score
             best_predictors = new_predictors
             removed.append(remove_p)
@@ -108,13 +108,13 @@ def ols(x, y):
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2,\
                                                         random_state=30)
     model = LinearRegression().fit(x_train, y_train)
-    
-    train_rsq = model.score(x_train, y_train)
-    test_rsq = model.score(x_test, y_test)
+
+    train_rsq = round(model.score(x_train, y_train), 4)
+    test_rsq = round(model.score(x_test, y_test), 4)
     y_pred = model.predict(x_test)
-    mse = mean_squared_error(y_test, y_pred)
+    mse = round(mean_squared_error(y_test, y_pred), 4)
     
-    return [train_rsq, test_rsq, mse]
+    return {'train r-squared':train_rsq, 'test r-squared':test_rsq, 'mse':mse}
 
 def main():
     path = Path.cwd()
@@ -158,7 +158,7 @@ def main():
     df = strip_strings(df, 'rank', '()')
     
     # Add state dummies to consider adding state fixed effects to model
-    df = add_dummies(df, 'state')
+    df_state_fe = add_dummies(df, 'state')
         
     # Perform backward selection to choose features to predict total cases per capita
     numeric_x = df.drop(columns=['date', 'state', 'total_cases_pc', 'new_cases_pc'])
@@ -168,6 +168,21 @@ def main():
     # Perform backward selection to choose features to predict new cases per capita
     y_new = df['new_cases_pc']    
     score_new, features_new = backward_selection(numeric_x, y_new)
+    
+    # Perform OLS with selected features
+    total_pc_results = ols(df[features_total], y_total)
+    print('To predict total COVID-19 cases per capita, we use the following \
+          predictors and obtain the following results:')
+    print('Features: ', features_total)
+    print('Results: ', total_pc_results)
+    print('\n')
+    
+    new_pc_results = ols(df[features_new], y_new)
+    print('To predict new COVID-19 cases per capita, we use the following predictors\
+          and obtain the following results:')
+    print('Features: ', features_new)
+    print('Results: ', new_pc_results)
+
     
 main()
         

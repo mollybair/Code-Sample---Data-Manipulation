@@ -26,6 +26,11 @@ in a linear regression model, and used the mean squared error and the R-squared
 value to evaluate the model's performance. I decided against adding state fixed
 effects to the model because doing so increased the mean squared error.
 
+I decided not to include state fixed effects in either of the final models. 
+Including state fixed effects resulted in the same mean squared error as not
+including them did, and the result is an equally performing, simpler model
+without them.
+
 COVID-19 case data retrieved from: https://covidtracking.com/data/
 COVID-19 reopening data retrieved from: https://www.multistate.us/issues/covid-19-state-reopening-guide
 Population data retrieved from: https://worldpopulationreview.com/states
