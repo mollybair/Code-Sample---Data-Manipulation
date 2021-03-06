@@ -1,4 +1,4 @@
-# Python Code Sample - Data Manipulation
+# Python Code Sample - Feature Selection and Regression
 
 RQ: Can the degree of a state's openness predict that states total number of 
 COVID-19 cases per capita?
